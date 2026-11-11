@@ -222,6 +222,10 @@ footer{max-width:1320px;margin:0 auto;padding:2rem clamp(1rem,4vw,3rem) 3rem;col
         <input class="inp" id="name" autocomplete="name" autocapitalize="words" enterkeyhint="next" maxlength="60" placeholder="e.g. Priya Sharma">
         <p class="hint" id="nameHint"></p>
 
+        <label class="lbl" for="college">College</label>
+        <input class="inp" id="college" autocomplete="organization" autocapitalize="words" enterkeyhint="next" maxlength="80" placeholder="e.g. IIT Madras">
+        <p class="hint" id="collegeHint">Printed after “Semester 2 at”.</p>
+
         <label class="lbl" for="email">Email</label>
         <input class="inp" id="email" type="email" autocomplete="email" inputmode="email" enterkeyhint="done" placeholder="you@college.edu">
         <p class="hint" id="emailHint">Use the email you registered with on Unstop.</p>
@@ -431,6 +435,16 @@ function paint(){
   while(ctx.measureText(text).width>1020 && s>34){ s-=2; ctx.font=st.font(s); }
   ctx.textAlign="center"; ctx.textBaseline="alphabetic"; ctx.fillStyle=st.color; ctx.globalAlpha=n?1:.16;
   ctx.fillText(text,1000,st.y); ctx.globalAlpha=1;
+  const col=(state.college||"").replace(/\s+/g," ").trim();
+  fit(EVENT,937,786,740,40,1); fit(col||"Your College",1541,874,530,40,col?1:.16);
+  fit(claimDate(),458,1232,370,36,1); fit(EVENT,1000,1232,380,32,1);
+}
+const EVENT="Game On: Imagine the Impossible";
+function claimDate(){ const d=new Date(); return `${String(d.getDate()).padStart(2,"0")}-${d.toLocaleString("en-US",{month:"short"}).toUpperCase()}-${d.getFullYear()}`; }
+function fit(t,x,y,max,size,alpha){
+  const f=s=>`600 ${s}px "Bricolage Grotesque", system-ui, sans-serif`; let s=size; ctx.font=f(s);
+  while(ctx.measureText(t).width>max && s>16){ s-=1; ctx.font=f(s); }
+  ctx.textAlign="center"; ctx.fillStyle="#1F1F1F"; ctx.globalAlpha=alpha; ctx.fillText(t,x,y); ctx.globalAlpha=1;
 }
 if(document.fonts){ Promise.all(['italic 700 80px "Playfair Display"','800 80px "Bricolage Grotesque"','400 80px "Great Vibes"'].map(f=>document.fonts.load(f))).then(draw).catch(draw); }
 
@@ -451,7 +465,7 @@ if(!reduce){
 }
 
 /* ---------- form ---------- */
-const nameIn=$("#name"), emailIn=$("#email"), lockBtn=$("#lock");
+const nameIn=$("#name"), emailIn=$("#email"), collegeIn=$("#college"), lockBtn=$("#lock");
 const emailOk=v=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) && v.trim().length<=254;
 function validate(){
   const n=niceName(nameIn.value), e=emailIn.value.trim(), nh=$("#nameHint"), eh=$("#emailHint");
@@ -460,12 +474,14 @@ function validate(){
   else { nh.textContent=n?`Printed as “${n}”`:""; nh.classList.remove("err"); }
   if(e && !emailOk(e)){ eh.textContent="That email is missing something. Check for the @ and the domain."; eh.classList.add("err"); }
   else { eh.textContent="Use the email you registered with on Unstop."; eh.classList.remove("err"); }
-  const good=n.length>=2 && !nh.classList.contains("err") && emailOk(e);
+  const good=n.length>=2 && !nh.classList.contains("err") && emailOk(e) && collegeIn.value.trim().length>=2;
   lockBtn.disabled=!good; return good;
 }
 nameIn.addEventListener("input",()=>{ state.name=nameIn.value; card.classList.add("live-on"); draw(); validate(); });
 nameIn.addEventListener("blur",()=>{ if(!touch) card.classList.remove("live-on"); });
-nameIn.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); emailIn.focus(); } });
+nameIn.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); collegeIn.focus(); } });
+collegeIn.addEventListener("input",()=>{ state.college=collegeIn.value; card.classList.add("live-on"); draw(); validate(); });
+collegeIn.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); emailIn.focus(); } });
 emailIn.addEventListener("input",validate);
 emailIn.addEventListener("keydown",e=>{ if(e.key==="Enter" && validate()){ emailIn.blur(); lock(); } });
 document.querySelectorAll(".styles button").forEach(b=>b.addEventListener("click",()=>{
@@ -473,11 +489,11 @@ document.querySelectorAll(".styles button").forEach(b=>b.addEventListener("click
   b.setAttribute("aria-pressed","true"); state.style=b.dataset.style; buzz(8); draw();
 }));
 lockBtn.addEventListener("click",lock);
-try{ const sv=JSON.parse(localStorage.getItem("fmc26")||"null"); if(sv){ nameIn.value=sv.name||""; emailIn.value=sv.email||""; state.name=nameIn.value; if(STYLES[sv.style]){ state.style=sv.style; document.querySelectorAll(".styles button").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.style===sv.style))); } validate(); draw(); } }catch(e){}
+try{ const sv=JSON.parse(localStorage.getItem("fmc26")||"null"); if(sv){ nameIn.value=sv.name||""; collegeIn.value=sv.college||""; emailIn.value=sv.email||""; state.name=nameIn.value; state.college=collegeIn.value; if(STYLES[sv.style]){ state.style=sv.style; document.querySelectorAll(".styles button").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.style===sv.style))); } validate(); draw(); } }catch(e){}
 
 async function lock(){
   if(!validate()) return;
-  state.name=nameIn.value; state.email=emailIn.value;
+  state.name=nameIn.value; state.college=collegeIn.value; state.email=emailIn.value;
   let alreadyMine=false;
   try{ const sv=JSON.parse(localStorage.getItem("fmc26")||"null"); alreadyMine = sv && sv.email===state.email.trim().toLowerCase() && sv.no; if(alreadyMine) state.claimNo=sv.no; }catch(e){}
   const saving = sbOn() ? saveClaim().then(()=>refreshCount()).catch(e=>console.warn("Saving claim failed",e)) : Promise.resolve();
@@ -491,7 +507,7 @@ async function lock(){
   await Promise.race([saving, new Promise(r=>setTimeout(r,2500))]);
   if(!state.claimNo){ state.claimNo = claimed; }
   renderCount();
-  try{ localStorage.setItem("fmc26",JSON.stringify({name:state.name,email:state.email.trim().toLowerCase(),style:state.style,no:state.claimNo})); }catch(e){}
+  try{ localStorage.setItem("fmc26",JSON.stringify({name:state.name,college:state.college||"",email:state.email.trim().toLowerCase(),style:state.style,no:state.claimNo})); }catch(e){}
   if(!reduce){ await new Promise(r=>setTimeout(r,450)); ov.classList.remove("on"); confetti(); }
   showShare();
 }
